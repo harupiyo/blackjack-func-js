@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "folktale": "^2.3.2",
+    "rambda": "^8.1.0",
+    "readline-sync": "^1.4.10"
+  }
+}
