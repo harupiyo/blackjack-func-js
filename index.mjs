@@ -50,16 +50,18 @@ const addA2 = R.lift(R.add);
 // console.log( R.lift(R.add)([1,2],[3,4]) )	// [4,5,5,6]
 
 /** @type {(_: number[][]) => number[]} */
-const calcScores = R.reduce(addA2, [ 0 ]);	// ??? どうなる？
+const calcScores = R.reduce(addA2, [ 0 ]);	// calcScore([[1,11],[1,11],[10]]) = [12,22,22,32]
 
 /** @type {(_: number[]) => Maybe<number>} */
+// pipe は関数合成、順番に適用
+// https://ramdajs.com/docs/#pipe
 const extractValidScore = R.pipe(
 	R.filter(R.gte(21)),
 	(xs) => Math.max(...xs),
 	// https://gigobyte.github.io/purify/adts/Maybe#static-fromPredicate
 	// Maybe.fromPredicate(x => x > 0, 5)	→ Just(5)
 	// Maybe.fromPredicate(x => x > 0, -1)	→ Nothing
-	Maybe.fromPredicate((x) => x !== - Infinity),
+ 	Maybe.fromPredicate((x) => x !== - Infinity),	// Math.max は引数がない場合には -Infinity を返す
 );
 
 /** @type {(_: () => number) => (_: Card[]) => Card[]} */
@@ -182,6 +184,7 @@ const main = (turn) => {
 
 	// https://gigobyte.github.io/purify/adts/EitherAsync
 	// liftEither はAsyncじゃない showdownをAsync っぽくあつかうらしい https://guvalif.github.io/functional-blackjack-v2/20 より
+	// chain はHaskell の >>= (bind) https://guvalif.github.io/functional-blackjack-v2/13 より
 	EitherAsync.liftEither(showdown).chain(() => prompt(io)).caseOf({
 		Left  : (x) => console.log(x),		// 'See you !'->プログラム終了
 		Right : ()  => main(turn + 1),		// main を再帰呼出しでループ
