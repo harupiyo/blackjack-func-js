@@ -254,9 +254,93 @@ prepareGame' = ("Player",playerCards) where
 --   :: Control.Monad.IO.Class.MonadIO m => (String, m [Card])
 
 
+-- これでもおんなじ問題が起こる
+-- ghci> ("hello", shuffleSuit) :: Control.Monad.IO.Class.MonadIO m => (String, m[Card])
+-- <interactive>:36:1: error:
+--     • Ambiguous type variable ‘m0’ arising from a use of ‘print’
+--       prevents the constraint ‘(Show (m0 [Card]))’ from being solved.
+--       Probable fix: use a type annotation to specify what ‘m0’ should be.
+--       These potential instances exist:
+--         instance Show a => Show (Maybe a) -- Defined in ‘GHC.Show’
+--         instance (Show a, Show b) => Show (a, b) -- Defined in ‘GHC.Show’
+--         instance (Show a, Show b, Show c) => Show (a, b, c)
+--           -- Defined in ‘GHC.Show’
+--         ...plus 14 others
+--         ...plus three instances involving out-of-scope types
+--         (use -fprint-potential-instances to see them all)
+--     • In a stmt of an interactive GHCi command: print it
+--
+-- fst で文字列だけ取り出そうとしてもこのエラーから逃れられない
+-- ghci> fst ("hello", shuffleSuit) :: String
+-- 
+-- <interactive>:43:15: error:
+--     • Ambiguous type variable ‘m0’ arising from a use of ‘shuffleSuit’
+--       prevents the constraint ‘(Control.Monad.IO.Class.MonadIO
+--                                   m0)’ from being solved.
+--       Probable fix: use a type annotation to specify what ‘m0’ should be.
+--       These potential instances exist:
+--         instance [safe] Control.Monad.IO.Class.MonadIO IO
+--           -- Defined in ‘Control.Monad.IO.Class’
+--         ...plus one instance involving out-of-scope types
+--         (use -fprint-potential-instances to see them all)
+--     • In the expression: shuffleSuit
+--       In the first argument of ‘fst’, namely ‘("hello", shuffleSuit)’
+--       In the expression: fst ("hello", shuffleSuit) :: String
+
+-- これは動く
+-- test2 str = do
+--     a <- shuffleSuit
+--     return (str,a)
+-- 
+-- ghci> test2 "hello"
+-- ("hello",["A","N3","N7","N9","N4","N7","N5","N2","J","N9","K","N10","N8","N2","A","N6","N2","N10","A","N9","Q","N5","J","Q","J","N3","K","N10","N4","A","N9","N2","N8","N6","J","Q","N5","N7","N7","N8","Q","N8","N4","N3","N3","N10","N5","K","N6","N4","N6","K"])
+-- ghci> :t test2 "hello"
+-- test2 "hello"
+--   :: Control.Monad.IO.Class.MonadIO m => m (String, [Card])
+-- ghci> fmap fst $ test2 "hello"
+-- "hello"
+-- ghci> fmap snd $ test2 "hello"
+-- ["N6","N6","N3","N2","N7","K","N6","N7","A","N8","A","N2","J","N5","K","N4","K","K","N10","N5","N2","N8","N8","N5","J","N7","N9","N3","N10","N10","A","N3","N5","N9","J","N9","N4","N9","N2","N4","N3","Q","Q","N8","N7","N6","J","Q","Q","N10","N4","A"]
+-- 
+-- これもうごく
+-- test3 :: Control.Monad.IO.Class.MonadIO m => m (String,[Card])
+-- test3 = test2 "hello"
+-- 
+-- ghci> test3
+-- ("hello",["N3","N4","N5","K","N10","J","N10","N7","J","A","N8","N4","Q","J","N8","N3","Q","N6","Q","A","N10","N9","N6","N6","N5","N4","N2","N7","Q","A","J","N4","N7","N9","N8","N9","N5","N3","N5","N7","N2","K","N8","K","N2","N3","K","A","N10","N9","N6","N2"])
+-- 
+-- これでエラーはなくなった
+
+-- ↓後にアプリカティブにするために改修
+-- prepareGame :: Control.Monad.IO.Class.MonadIO m => m [(String,[Card])]
+-- prepareGame = do
+--   playerCards <- fmap getOddSuit shuffleSuit
+--   dealerCards <- fmap getEvenSuit shuffleSuit
+--   return [("Player", playerCards), ("Dealer", dealerCards)]
+
+-- ghci> prepareGame
+-- [("Player",["N10","N8","N10","N4","Q","K","N9","N9","N8","N4","N6","K","Q","N7","N9","N6","N3","N2","A","J","N8","N10","N10","J","N5","J"]),("Dealer",["J","N9","N9","Q","N8","K","N8","N2","J","A","N8","N10","A","N2","N2","N9","J","Q","N5","N4","A","N9","N6","N7","N10","K"])]
+
+-- エラーになったものは、 (String, m [Card]) だった。 m (String, [Card]) にしたらエラーにならなくなった。この違いなんだろう。（後者の場合にどうしたらいいかはまだぜんぜんわからないが、とりあえず前者を採用して次に進む）
+
+-- 次に実装するものはhit
+-- hitにはprepareGame(配列)が渡される
+--
+-- const hit = (turn) => R.pipe(
+-- 	R.take(turn + 2),	// 二+tern枚のカードを取得し
+-- 	toPoints,			// カードを点数に変換し
+-- 	calcScores,			// カードの得点の可能性を全部数え上げ（非決定性計算）
+-- 	extractValidScore,	// その中から最も高い有効な得点を得る（22以上の得点はドボン（失敗））
+-- );
+
+-- take などで prepareGame の配列を扱えるようにするには、prepareGame の配列を○○型(アプリカティブ？モナド？）のインスタンスにすればいい
+-- 箱に入れたままで通常の関数 take を実行したいのだから、ファンクターだ！（すごいHaskell 11.1）ファンクターのインスタンスにすればよい
 
 
-
-
-
-
+-- TODO シノニムを作りたいのだが、どう書けばいい？
+-- type Game = Control.Monad.IO.Class.MonadIO m => m [(String,[Card])]
+-- prepareGame :: Game
+-- prepareGame = do
+--   playerCards <- fmap getOddSuit shuffleSuit
+--   dealerCards <- fmap getEvenSuit shuffleSuit
+--   return [("Player", playerCards), ("Dealer", dealerCards)]

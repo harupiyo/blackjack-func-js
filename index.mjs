@@ -93,10 +93,10 @@ const prepareGame = R.pipe(
 
 /** @type {(_: number) => (_: Card[]) => Maybe<number>} */
 const hit = (turn) => R.pipe(
-	R.take(turn + 2),
-	toPoints,
-	calcScores,	// どういう動きをしているのか、console.log したいな
-	extractValidScore,
+   	R.take(turn + 2),	// 二+tern枚のカードを取得し
+   	toPoints,			// カードを点数に変換し
+   	calcScores,			// カードの得点の可能性を全部数え上げ（非決定性計算）
+   	extractValidScore,	// その中から最も高い有効な得点を得る（22以上の得点はドボン（失敗））
 );
 
 /** @type {(_: Maybe<number>, _: string) => Either<string, string>} */
